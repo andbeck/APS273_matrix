@@ -26,6 +26,17 @@ for (i in 2:times){
   pops[i,]<-myMat %*% pops[(i-1),]
 }
 
+pops
+
+# Functional Programming style
+
+# base R functional
+Reduce(f=function(v, x) myMat %*% v, x=1:50, 
+       init=c(10,10), accumulate=TRUE)
+# purrr functional (accumulate vs. reduce which prints only end)
+accumulate(.f=function(v, x) myMat %*% v, .x=1:50, 
+              .init=c(10,10))
+
 # quick trick
 matplot(pops, type = 'l')
 
