@@ -1,0 +1,32 @@
+---
+title: "Workshop1_2018_APS273"
+author: "APB"
+date: "15/02/2018"
+output: html_document
+---
+
+## Getting Started with Matrix Models
+This is a workbook to learn how to do some conservation biology modelling
+It is an RMarkdown document
+
+The first thing we need to do is get some libraries working for us
+Try this with and without messages!
+
+```{r}
+library(tidyverse)
+library(popbio)
+```
+
+Now, lets learn how to make a matrix and play with it in R
+Having looked at the __help file__, the *function* `matrix()` wants the following
+
+*
+*
+*
+
+```{r}
+myMatrix <- matrix(c(0,2,0.5,0.1), nrow = 2, byrow = TRUE)
+myMatrix
+```
+
+
