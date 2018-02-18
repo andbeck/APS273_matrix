@@ -6,27 +6,173 @@ output: html_document
 ---
 
 ## Getting Started with Matrix Models
-This is a workbook to learn how to do some conservation biology modelling
-It is an RMarkdown document
+
+This is a workbook to learn how to do some conservation _biology_ **modelling**.  It is an RMarkdown document
 
 The first thing we need to do is get some libraries working for us
-Try this with and without messages!
 
 ```{r}
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
 library(popbio)
 ```
 
-Now, lets learn how to make a matrix and play with it in R
-Having looked at the __help file__, the *function* `matrix()` wants the following
+## Matrix multiplication basics  in R
 
-*
-*
-*
+First, lets make a matrix that is 2 x 2.
 
 ```{r}
-myMatrix <- matrix(c(0,2,0.5,0.1), nrow = 2, byrow = TRUE)
-myMatrix
+myMat <- matrix(c(0,2,0.5,0.1), nrow = 2, byrow = TRUE)
+myMat
 ```
 
+In order to do matrix multiplication, we need a vector of starting numbers in each age class.  Because the matrix is 2 x 2, there are 2 age classes.... I'll start with 10 and 10.
+
+```{r}
+n0 <- c(10,10)
+```
+
+Matrix multiplication uses the `%*%` function in R.
+
+```{r}
+myMat %*% n0
+```
+
+Now we are going to make a _LOOP_ that does the iteration of the matrix through time...  we will get back a time series of population size in each age class.
+
+This is the setup
+
+```{r}
+# First define the number of years
+# how many years into the future
+times <- 50
+
+# Second, make a collection bin
+pops <-matrix(data = NA, nrow = times, ncol = 2)
+
+# Third, make the first row of pops = c(10,10)
+# the pops[1,] is read to be ROW 1 of pops
+pops[1,] <- n0
+```
+
+This is the looping model.  It fills in rows in the pops collection matrix.
+Row 2, where it starts, gets filled in by using row 1.  Row 3 gets filled in using row 2.
+Thats pops[(i),] gets filled in using pops[(i-1),]
+
+```{r}
+for (i in 2:times){
+  pops[i,] <- myMat %*% pops[(i-1),]
+}
+
+head(pops)
+```
+
+What if we index differently?
+
+```{r, eval = FALSE}
+for (i in 1:49){
+  pops[(i+1)] <-
+}
+```
+
+
+Lets learn a quick way to visualise this.
+
+```{r}
+matplot(log(pops), type = 'l')
+```
+
+Lets see how to use ggplot and dplyr to make it prettier.
+
+```{r}
+# first make it a data frame
+plotPops <- as.data.frame(pops)
+
+# second add informative names
+names(plotPops) <- c("J", "A")
+
+# Third, add a total population size column
+# and a time column
+plotPops <- mutate(plotPops, TotalN = J+A,
+                   time = 1:times)
+
+# Fourth use ggplot2 to make the picture
+ggplot(plotPops, aes(x = time, y = J))+
+  geom_line()+
+  geom_line(aes(x = time, y = A), col = 'red')+
+  geom_line(aes(x = time, y = TotalN), col = 'blue')+
+  scale_y_log10()+
+  ylab("log(Population Sizes)")+ xlab("Years")+
+  theme_bw()
+```
+
+The black line is J, the red is A and the blue is Total.
+
+## Lambda, stage distribution and sensitivity/elasticity
+
+Rough calcuation of stable age distrubution
+
+```{r}
+mutate(plotPops, propJ = J/TotalN, propA = A/TotalN) %>%
+  tail
+```
+
+In R, there is a function called `eigen` that gets the eigenvalues (1st value is lambda) and the 1st eigenvector (1st column) describes the stable age distribution.
+
+```{r}
+# eigen magic
+myEigen <- eigen(myMat)
+myEigen$values
+
+# age distribution
+myEigen$vectors[,1]/sum(myEigen$vectors[,1])
+```
+
+#### focus on popbio package now to finish
+
+the *popbio* package has some helper functions that make this stuff easy.
+
+```{r}
+# lambda
+lambda(myMat)
+
+# stable stage distribution
+stable.stage(myMat)
+```
+
+*popbio* also has some clever plotting
+
+```{r}
+out <- pop.projection(myMat, n0, times)
+names(out)
+
+# stage vector plot
+stage.vector.plot(out$stage.vectors)
+```
+
+Last steps.... are how to get sensitivity and elasticity.  We are using functions `sensitivity` and `elasticity` from _popbio_.
+
+
+
+```{r}
+sensMat <- sensitivity(myMat)
+elastMat <- elasticity(myMat)
+
+sensMat
+elastMat
+```
+
+Don't forget that you can access numbers in these matrices using the `[rownumber,columnnumber]` notation: e.g. the number in the 2nd row and 2rd column of `sensMat` is found by doing this:
+
+```{r}
+sensMat[2,2] # this gets the number out of the second row and second column of sensMat
+```
+
+This might too:
+
+```{r}
+barplot(sensMat, beside = TRUE)
+```
+
+You may want to check the helpfile for ?barplot
 
