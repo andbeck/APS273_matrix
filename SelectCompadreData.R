@@ -41,3 +41,45 @@ map(.x = useStudent, .f=function(x) elasticity(x))
 save(useStudent, file = 'studentMatrices.RData')
 
 myMatrix <- useStudent[[10]]
+
+
+## ANSWERS
+
+load("/Users/apb/Google Drive/###Teaching Active/2017_18/APS 273/Workshops/studentMatrices.RData")
+
+stuff <- function(mat){
+  ll <- lambda(mat)
+  ss <- stable.stage(mat)
+  pp <- pop.projection(mat, rep(10,5), 50)
+  ee <- elasticity(mat)
+  sen <- sensitivity(mat)
+  
+  out<-list(lambda = ll, stable_stage = ss,
+                  elasticity = ee, sensitivity = sen)
+  
+  pd<-data.frame(time= 1:50, numbers = pp$pop.sizes, t(pp$stage.vectors))
+  names(pd)[3:7] <- c("S1","S2","S3","S4","S5")
+  
+  print("-----")
+  cat('\n')
+  
+  print(mat)
+  print("-----")
+  cat('\n')
+  
+  print(out)
+  
+  ggplot(pd, aes(x = time, y = numbers))+
+    geom_line()+
+    geom_line(data = pd, aes(x = time, y= S1), col = 'red')+
+    geom_line(data = pd, aes(x = time, y= S2), col = 'green')+
+    geom_line(data = pd, aes(x = time, y= S3), col = 'blue')+
+    geom_line(data = pd, aes(x = time, y= S4), col = 'purple')+
+    geom_line(data = pd, aes(x = time, y= S5), col = 'yellow')+
+    scale_y_log10()
+}
+
+
+stuff(useStudent[[1]])
+
+map(.f = stuff, .x = useStudent)
