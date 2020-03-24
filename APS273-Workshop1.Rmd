@@ -7,19 +7,21 @@ output: html_document
 
 ## Getting Started with Matrix Models
 
-This is a workbook to learn how to do some conservation _biology_ **modelling**.  It is an RMarkdown document
+This is a workbook to learn how to do some conservation _biology_ **modelling**.  It is an RMarkdown document.
 
-The first thing we need to do is get some libraries working for us
+The first thing we need to do is get some libraries working for us.  Remember, if you have not already installed these, you must do that FIRST (but only ONCE).
 
-```{r}
+```{r warnings = FALSE}
 library(dplyr)
 library(ggplot2)
 library(popbio)
 ```
 
-## Matrix multiplication basics  in R
+## Matrix multiplication basics in R
 
-First, lets make a matrix that is 2 x 2.
+This section helps you learn how matrix multiplication works.
+
+First, lets make a matrix that is 2 x 2.  This is a matrix that defines the fertilities and surivals for a simple 2-stage (Juvenile and Adult) life cycle.
 
 ```{r}
 myMat <- matrix(c(0,2,0.5,0.1), nrow = 2, byrow = TRUE)
@@ -32,13 +34,13 @@ In order to do matrix multiplication, we need a vector of starting numbers in ea
 n0 <- c(10,10)
 ```
 
-Matrix multiplication uses the `%*%` function in R.
+Matrix multiplication uses the `%*%` function in R.  The following multiplication is like projecting the population (n0 now) into the future by 1 year.
 
 ```{r}
 myMat %*% n0
 ```
 
-Now we are going to make a _LOOP_ that does the iteration of the matrix through time...  we will get back a time series of population size in each age class.
+Now we are going to make a _LOOP_ that does the iteration of the matrix through several time steps...  we will get back a time series of population size in each age class.
 
 This is the setup
 
@@ -47,54 +49,73 @@ This is the setup
 # how many years into the future
 times <- 50
 
-# Second, make a collection bin
+# Second, make a collection box into which we put the projections
+# the box is a matrix with two columns, one for each age class.
 pops <-matrix(data = NA, nrow = times, ncol = 2)
 
 # Third, make the first row of pops = c(10,10)
-# the pops[1,] is read to be ROW 1 of pops
+# the pops[1,] is a way to specify the first (1) row (,) of the pops vector
+# we've assigned n0 from above to the first row.
 pops[1,] <- n0
+
+# let's look at it
+pops
 ```
 
-This is the looping model.  It fills in rows in the pops collection matrix.
-Row 2, where it starts, gets filled in by using row 1.  Row 3 gets filled in using row 2.
-Thats pops[(i),] gets filled in using pops[(i-1),]
+NEXT ->  the looping code.  For each time step, we project forward.  It fills in rows in the SUBSENQUENT row of the pops collection matrix. Row 2 gets filled in by using row 1 numbers.  Row 3 gets filled in using row 2 numbers, after they got calculated... and so on. Thats pops[(i),] gets filled in using pops[(i-1),].
 
 ```{r}
+# we start counting from 2 because we specify time 1 (n0).
 for (i in 2:times){
+  # The current row i is created by multiplying the previous row (i-1)
+  # by the projection matrix.
   pops[i,] <- myMat %*% pops[(i-1),]
 }
 
-head(pops)
+# Now look again!
+pops
 ```
 
-What if we index differently?
+CHALLENGE: Repeat the above exercise with the i counter starting at 1.
 
 ```{r, eval = FALSE}
+# First define the number of years
+# how many years into the future
+times <- 10
+
+# Second, make a collection box into which we put the projections
+# the box is a matrix with two columns, one for each age class.
+pops_2 <-matrix(data = NA, nrow = times, ncol = 2)
+
+# Third, make the first row of pops = c(10,10)
+# the pops[1,] is a way to specify the first (1) row (,) of the pops vector
+# we've assigned n0 from above to the first row.
+pops_2[1,] <- n0
+
+
 for (i in 1:49){
-  pops[(i+1)] <-
+  pops_2[(i+1)] <-
 }
+
+
 ```
 
+### Lets learn a quick way to visualise this.
 
-Lets learn a quick way to visualise this.
-
-```{r}
-matplot(log(pops), type = 'l')
-```
-
-Lets see how to use ggplot and dplyr to make it prettier.
+Lets see how to use ggplot and dplyr to turn this into a graph
 
 ```{r}
-# first make it a data frame
+# first make the output a data frame
 plotPops <- as.data.frame(pops)
 
-# second add informative names
+# second add informative names to the columns
 names(plotPops) <- c("J", "A")
 
 # Third, add a total population size column
 # and a time column
-plotPops <- mutate(plotPops, TotalN = J+A,
-                   time = 1:times)
+plotPops <- plotPops %>% 
+  mutate(TotalN = J+A,
+         time = 1:times)
 
 # Fourth use ggplot2 to make the picture
 ggplot(plotPops, aes(x = time, y = J))+
@@ -106,73 +127,97 @@ ggplot(plotPops, aes(x = time, y = J))+
   theme_bw()
 ```
 
-The black line is J, the red is A and the blue is Total.
+The black line is J, the red is A and the blue is Total.  What we can see here is that the population is increasing.  
+
+### CHALLENGE: Change the time value to 50 now, and see if the _cycles_ dampen?  When the lines are parallel... what has happened?
+
+## dplyr ggplot Complex Learning
+
+The above dataframe is not set up like a tidy data frame.  It is too wide - the three columns that represent population sizes should all be one column of numbers and one column specifying the stage.  We can do this with a function in the tidyr package called pivot_longer.  Anyone who has made a pivot table in excel might understand this process a bit.
+
+You will need to install _tidyr_ to do this.
+
+```{r}
+# longify
+long_pop <- plotPops %>% 
+  tidyr::pivot_longer(-time, names_to = "Stage", values_to = "Pop_size")
+
+ggplot(long_pop, aes(x = time, y = Pop_size, colour = Stage, group = Stage))+
+  geom_line()+
+  theme_minimal()
+```
 
 ## Lambda, stage distribution and sensitivity/elasticity
 
-Rough calcuation of stable age distrubution
+In this section, we will learn how to calculate lambda - the population growth rate - the stable stage distribution and sensitivities/elasticities.  We will use the functions in the _popbio_ package to do this.  This is a lovely package to play with, and has an associated two books: the package consists of the R translation of Matlab code found in Caswell (2001) or Morris and Doak (2002).
+
+You can check out the help file of popbio using `??popbio` and clicking through the link for __popbio::01.Introduction__
+
+the _popbio_ package has some helper functions that make this stuff easy.
+
+#### Population growth rate
+
+Remember that lambda is an indication of whether the population is growing, steady or declining. We know from the simulations above that the population is growing.  This means the lambda should be >1.
 
 ```{r}
-mutate(plotPops, propJ = J/TotalN, propA = A/TotalN) %>%
-  tail
-```
-
-In R, there is a function called `eigen` that gets the eigenvalues (1st value is lambda) and the 1st eigenvector (1st column) describes the stable age distribution.
-
-```{r}
-# eigen magic
-myEigen <- eigen(myMat)
-myEigen$values
-
-# age distribution
-myEigen$vectors[,1]/sum(myEigen$vectors[,1])
-```
-
-#### focus on popbio package now to finish
-
-the *popbio* package has some helper functions that make this stuff easy.
-
-```{r}
-# lambda
+# lambda - the asymptotic population growth rate
 lambda(myMat)
+```
 
+
+#### Stage/Age Structure
+
+The challenge question above about parallel lines was specifically about the 'stable stage/age distribution'. In these models, the population eventially settles on a CONSTANT ratio among all stages.  The proportion of the total population in each age/stage is constant.
+
+We can get that from this code.
+
+```{r}
 # stable stage distribution
 stable.stage(myMat)
 ```
 
-*popbio* also has some clever plotting
+#### *popbio* also has some clever simulation and plotting tools
+
+Let's recreate our plots with less code and the _popbio_ functions.
 
 ```{r}
+# first run the simulations.  This is doing the looping you coded above
 out <- pop.projection(myMat, n0, times)
+
+# what does this produce?  Familiar?
 names(out)
 
-# stage vector plot
+# stage vector plot - this is a plot of the proportion in each stage
+# cool!
 stage.vector.plot(out$stage.vectors)
 ```
 
-Last steps.... are how to get sensitivity and elasticity.  We are using functions `sensitivity` and `elasticity` from _popbio_.
+#### Last steps: sensitivity and elasticity.  
 
+We are using functions `sensitivity` and `elasticity` from _popbio_.  Remember that the goal in conservation planning is often to identify whether an absolute or percentage increase in the size of a particular age/stage class could reverse a declining population trend.  
 
+To do this, we ask, for a change in the fertility or surivival (absolute = sensitivity, percentage = elasticity), what is the change in lambda.  If it's big, the stage/age is 'important'.  If it's small, it's not.
+
+Remember too - one of the reasons elasticities are important is because survival is always a fraction between 0 and 1, but fertilities are bounded only by 0 at the bottom.  They can be big and whole numbers.  We say that they are on different scales.
+
+Another way to think about this is that you can not ask about the effect of a change of 2 for a survial, but you can for fertility - survival can't be above 1.   However, you can ask about a 10% change.... this makes the analysis standardised.
 
 ```{r}
+
+# Sensitivity Analysis
 sensMat <- sensitivity(myMat)
-elastMat <- elasticity(myMat)
 
+# Elasticity Analysis
+elasMat <- elasticity(myMat)
+
+# look at them
 sensMat
-elastMat
+elasMat
+
+# plot them!
+image2(sensMat)
+image2(elasMat)
+
+# OR - like the barplots in the Doak Reading
+barplot(as.vector(sensMat), names.arg = c("F1","S1", "F2", "S2"))
 ```
-
-Don't forget that you can access numbers in these matrices using the `[rownumber,columnnumber]` notation: e.g. the number in the 2nd row and 2rd column of `sensMat` is found by doing this:
-
-```{r}
-sensMat[2,2] # this gets the number out of the second row and second column of sensMat
-```
-
-This might too:
-
-```{r}
-barplot(sensMat, beside = TRUE)
-```
-
-You may want to check the helpfile for ?barplot
-
