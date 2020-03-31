@@ -1,0 +1,99 @@
+---
+title: "QuickMatrixModelling"
+author: "APB"
+date: "31/03/2020"
+output: html_document
+---
+## Getting Setup
+
+The first thing we need to do is get some libraries working for us.
+
+```{r warnings = FALSE, message = FALSE}
+library(dplyr)
+library(ggplot2)
+library(popbio)
+```
+
+## The popbio package for matrix modelling for conservation in R
+
+We are going to review the use of the popbio package.  You should have reviewed the PDF handout that provides deeper insight already.
+
+First, lets make a matrix that is 2 x 2.  This is a matrix that defines the fertilities and surivals for a simple 2-stage (Juvenile and Adult) life cycle.
+
+```{r}
+myMat <- matrix(c(0,2,0.5,0.1), nrow = 2, byrow = TRUE)
+myMat
+```
+
+We can now use the popbio package to 
+1. calculate the population growth rate: $\lambda$
+2. calcuate the stable age/stage distribution
+3. project and graph the dynamics through time.
+4. calucate the sensitivity and elasticity of each vital rate
+
+#### $\lambda\$
+
+```{r}
+lambda(myMat)
+```
+
+#### Stable age distribution
+
+Remember, this is the proportion of the total popualtion in each age class
+
+```{r}
+stable.stage(myMat)
+```
+
+#### Projecting the population
+
+The pop.projection function is very handy.  It takes as arguments your matrix, the initial vector of population sizes and the number of time steps into the future you want to project.  Remember, if your matrix is 2x2, your intial vector needs to be 2 numbers... if it is 3 x 3, it needs to be 3 numbers.  
+
+You can see that it produces five outputs.  Lambda, the stable stage distribution, the stable stage vectors, population sizes and population changes.
+
+```{r}
+nitts <- 50
+out <- pop.projection(myMat, n = c(10,10), iterations = nitts)
+names(out)
+```
+
+#### Exploring the pieces with graphs.
+
+Let's organise the data to use with ggplot.
+
+```{r}
+popSize <- data.frame(Time = 1:nitts,
+                      popSize = out$pop.sizes,
+                      JuvSize = out$stage.vectors[1,],
+                      AdSize = out$stage.vectors[2,])
+
+# why do we need nitts - 1?
+growthRate <- data.frame(Time = 1:(nitts-1),
+                         growthRate = out$pop.changes)
+```
+
+Now we can make some plots.  We can see that the popualtion size is increasing.
+
+```{r}
+ggplot(popSize, aes(x = Time, y = popSize))+
+  geom_line()
+```
+
+Lets modify this to plot the stages too.
+
+```{r}
+ggplot(popSize, aes(x = Time, y = popSize))+
+  geom_line()+
+  geom_line(aes(y = JuvSize, colour = 'red'), show.legend = FALSE)+
+  geom_line(aes(y = AdSize, colour = 'green'), show.legend = FALSE)+
+  theme_bw()
+```
+
+Now, lets plot the population growth rate.  What value is it approaching?
+
+```{r}
+ggplot(growthRate, aes(x = Time, y = growthRate))+
+  geom_line()
+```
+
+Now, go and change nitts to 50 or 100 and rerun this.

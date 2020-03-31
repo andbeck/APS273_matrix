@@ -11,7 +11,7 @@ This is a workbook to learn how to do some conservation _biology_ **modelling**.
 
 The first thing we need to do is get some libraries working for us.  Remember, if you have not already installed these, you must do that FIRST (but only ONCE).
 
-```{r warnings = FALSE}
+```{r warnings = FALSE, message = FALSE}
 library(dplyr)
 library(ggplot2)
 library(popbio)
@@ -47,7 +47,7 @@ This is the setup
 ```{r}
 # First define the number of years
 # how many years into the future
-times <- 50
+times <- 10
 
 # Second, make a collection box into which we put the projections
 # the box is a matrix with two columns, one for each age class.

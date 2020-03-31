@@ -3,13 +3,13 @@ library(popbio)
 library(matrixcalc)
 
 
-load('~/Google Drive/###Teaching Active/2017_18/APS 273/Workshops/COMADRE_v.2.0.1.RData')
+load('~/Google Drive/###Teaching Active/#2019-20/PopCommShared/COMADRE_v.2.0.1.RData')
 length(comadre$mat) # 1927
 
 
 # Get some A-matrices of dimension 5 ----
 set.seed(1)
-out <- map(comadre$mat[sample(1:1927,300)], 'matA', dim)
+out <- map(comadre$mat[sample(1:1927,500)], 'matA', dim)
 dims<-map_dbl(out, function(x) dim(x)[1])
 use <- out[dims==5]
 
@@ -26,19 +26,23 @@ idx2 <- which(notSing == TRUE)
 use3 <- use2[idx2]
 
 # look at the ones left ----
-map(.x = use3, .f=function(x) elasticity(x)) # some baddies still
+idx_hold <- map(.x = use3, .f=function(x) any(elasticity(x)==1))
+idx3 <- which(idx_hold==TRUE)
 
-idx3 <- c(2,8,10,15) # don't use these
+length(use3[-idx3])
+
+use4 <- use3[-idx3] # also get rid of any with more than diag
+
+useStudent <- use4[-c(37, 35, 32, 29, 27, 26, 24, 20, 13, 7, 5, 1)]
 
 # Final set ----
-useStudent <- use3[-idx3]
 length(useStudent)
 
 # all elasticities look interesting
 map(.x = useStudent, .f=function(x) elasticity(x))
 
 # save to give out ----
-save(useStudent, file = 'studentMatrices.RData')
+save(useStudent, file = 'studentMatrices_2020.RData')
 
 myMatrix <- useStudent[[10]]
 
